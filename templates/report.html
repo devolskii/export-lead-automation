@@ -1,0 +1,72 @@
+{% extends 'layout.html' %}
+{% set active_page = 'report' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Outreach Analytics & Logs</h2>
+    <a href="/download-report" class="btn btn-outline-success">📥 Download Full Report (CSV)</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card card-stat bg-white p-3">
+            <h6 class="text-muted">Total Discovered</h6>
+            <h3>{{ report.total_discovered }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white p-3">
+            <h6 class="text-muted">Emails Sent</h6>
+            <h3 class="text-success">{{ report.total_sent }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white p-3">
+            <h6 class="text-muted">Failed Sends</h6>
+            <h3 class="text-danger">{{ report.total_failed }}</h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card card-stat bg-white p-3">
+            <h6 class="text-muted">Success Rate</h6>
+            <h3 class="text-primary">{{ report.success_rate }}%</h3>
+        </div>
+    </div>
+</div>
+
+<div class="card card-stat bg-white p-4">
+    <h4>Send History Audit Log (data/sent_log.csv)</h4>
+    <div class="table-responsive">
+        <table class="table table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>Email</th>
+                    <th>Buyer / Company</th>
+                    <th>Status</th>
+                    <th>Error Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td><small>{{ log.timestamp }}</small></td>
+                    <td><code>{{ log.email }}</code></td>
+                    <td>{{ log.buyer_name }} ({{ log.company_name }})</td>
+                    <td>
+                        {% if log.status == 'sent' %}
+                            <span class="badge bg-success">SENT</span>
+                        {% else %}
+                            <span class="badge bg-danger">FAILED</span>
+                        {% endif %}
+                    </td>
+                    <td><small class="text-danger">{{ log.error_detail }}</small></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" class="text-center text-muted">No send history logged yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends 'layout.html' %}
+{% set active_page = 'settings' %}
+
+{% block content %}
+<h2 class="mb-4">System Settings & Configuration</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card card-stat bg-white p-4">
+            <form action="/settings" method="POST">
+                <h5 class="border-bottom pb-2 mb-3">Gmail Credentials</h5>
+                <div class="mb-3">
+                    <label class="form-label">Gmail Email Address</label>
+                    <input type="email" name="gmail_email" class="form-control" value="{{ settings.gmail_email }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Gmail App Password (16 characters)</label>
+                    <input type="password" name="gmail_app_password" class="form-control" value="{{ settings.gmail_app_password }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">CC / Monitor Email Address</label>
+                    <input type="email" name="monitor_email" class="form-control" value="{{ settings.monitor_email }}">
+                </div>
+
+                <h5 class="border-bottom pb-2 mb-3 mt-4">API & Discovery Parameters</h5>
+                <div class="mb-3">
+                    <label class="form-label">Hunter.io API Key (Official Lead Finder API)</label>
+                    <input type="password" name="hunter_api_key" class="form-control" value="{{ settings.hunter_api_key }}" placeholder="Your Hunter.io API key...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Google Custom Search API Key (Official Search API)</label>
+                    <input type="password" name="google_cse_api_key" class="form-control" value="{{ settings.google_cse_api_key }}" placeholder="AIzaSy...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Google Programmable Search Engine ID (CX ID)</label>
+                    <input type="text" name="google_cse_cx" class="form-control" value="{{ settings.google_cse_cx }}" placeholder="0123456789...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Gemini API Key (for email classification)</label>
+                    <input type="password" name="gemini_api_key" class="form-control" value="{{ settings.gemini_api_key }}" placeholder="AIzaSy...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Search Niche / Product Keyword</label>
+                    <input type="text" name="search_keyword" class="form-control" value="{{ settings.search_keyword }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Daily Send Limit</label>
+                    <input type="number" name="daily_send_limit" class="form-control" value="{{ settings.daily_send_limit }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Inter-Email Send Delay (Seconds)</label>
+                    <input type="number" step="0.5" name="send_delay_seconds" class="form-control" value="{{ settings.send_delay_seconds }}" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Presentation PDF Path</label>
+                    <input type="text" name="presentation_path" class="form-control" value="{{ settings.presentation_path }}" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">Save Settings</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

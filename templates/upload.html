@@ -1,0 +1,46 @@
+{% extends 'layout.html' %}
+{% set active_page = 'upload' %}
+
+{% block content %}
+<h2 class="mb-4">Leads & Dataset Statistics</h2>
+
+<div class="row g-4">
+    <div class="col-md-5">
+        <div class="card card-stat bg-white p-4">
+            <h4>Upload Leads CSV</h4>
+            <p class="text-muted small">Import existing lead records into <code>data/buyers.csv</code>. Requires headers: <code>email, buyer_name, company_name, website, country, source_platform</code>.</p>
+            <form action="/upload" method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Select CSV File</label>
+                    <input type="file" name="file" class="form-control" accept=".csv" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Upload Leads CSV</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-md-7">
+        <div class="card card-stat bg-white p-4">
+            <h4>Database Files Status</h4>
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>File Artifact</th>
+                        <th>Record Count</th>
+                        <th>Size (KB)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for file_info in file_stats %}
+                    <tr>
+                        <td><code>{{ file_info.name }}</code></td>
+                        <td><span class="badge bg-primary">{{ file_info.rows }}</span></td>
+                        <td>{{ file_info.size }} KB</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

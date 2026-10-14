@@ -1,0 +1,53 @@
+{% extends 'layout.html' %}
+{% set active_page = 'send' %}
+
+{% block content %}
+<h2 class="mb-4">Outreach Campaign Dispatch</h2>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card card-stat bg-white p-4">
+            <form action="/send" method="POST">
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold">Target Audience Segment</label>
+                    <select name="audience" class="form-select">
+                        <option value="both">All Discovered Buyers (data/buyers.csv)</option>
+                        <option value="business">Business Segment Only (data/business_emails.csv)</option>
+                        <option value="individual">Individual Segment Only (data/individual_emails.csv)</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold">Email Subject</label>
+                    <input type="text" name="subject" class="form-control" value="{{ settings.default_subject }}" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold">Email Body Template</label>
+                    <textarea name="body" class="form-control" rows="8" required>{{ settings.default_body }}</textarea>
+                    <small class="text-muted">Available template variables: <code>{{ '{{buyer_name}}' }}</code>, <code>{{ '{{company_name}}' }}</code></small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label font-weight-bold">Company Presentation Attachment Path</label>
+                    <input type="text" name="attachment_path" class="form-control" value="{{ settings.presentation_path }}">
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg w-100">🚀 Launch Gmail Outreach Campaign</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card card-stat bg-white p-4">
+            <h5>Campaign Pre-flight Checks</h5>
+            <ul class="list-unstyled mt-3">
+                <li class="mb-2"><strong>Gmail Account:</strong><br><code>{{ settings.gmail_email or 'Not configured!' }}</code></li>
+                <li class="mb-2"><strong>App Password:</strong><br>{% if settings.gmail_app_password %}<span class="badge bg-success">Configured</span>{% else %}<span class="badge bg-danger">Missing</span>{% endif %}</li>
+                <li class="mb-2"><strong>Presentation File:</strong><br>{% if presentation_exists %}<span class="badge bg-success">Found ({{ presentation_size }} KB)</span>{% else %}<span class="badge bg-warning">File missing!</span>{% endif %}</li>
+                <li class="mb-2"><strong>Throttling Delay:</strong><br>{{ settings.send_delay_seconds }} seconds between sends</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

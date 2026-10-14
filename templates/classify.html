@@ -1,0 +1,53 @@
+{% extends 'layout.html' %}
+{% set active_page = 'classify' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>AI Email Classification</h2>
+    <form action="/classify" method="POST">
+        <button type="submit" class="btn btn-success btn-lg">✨ Run Gemini AI Classification</button>
+    </form>
+</div>
+
+<p class="text-muted">The AI Classification module uses Gemini to segment discovered contacts into <strong>Business</strong> vs <strong>Individual</strong> buyers for targeted outreach.</p>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card card-stat bg-white p-4 border-start border-4 border-info">
+            <h5>🏢 Business Buyers ({{ business_buyers|length }})</h5>
+            <small class="text-muted">Saved to <code>data/business_emails.csv</code></small>
+            <div class="mt-3" style="max-height: 300px; overflow-y: auto;">
+                <ul class="list-group list-group-flush">
+                    {% for b in business_buyers %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ b.buyer_name }} ({{ b.company_name }})</span>
+                        <code>{{ b.email }}</code>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted">No business buyers classified yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card card-stat bg-white p-4 border-start border-4 border-warning">
+            <h5>👤 Individual Buyers ({{ individual_buyers|length }})</h5>
+            <small class="text-muted">Saved to <code>data/individual_emails.csv</code></small>
+            <div class="mt-3" style="max-height: 300px; overflow-y: auto;">
+                <ul class="list-group list-group-flush">
+                    {% for i in individual_buyers %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <span>{{ i.buyer_name }}</span>
+                        <code>{{ i.email }}</code>
+                    </li>
+                    {% else %}
+                    <li class="list-group-item text-muted">No individual buyers classified yet.</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

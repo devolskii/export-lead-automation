@@ -1,0 +1,31 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+.venv/
+env/
+ENV/
+
+# Secrets and environment configs (DO NOT COMMIT)
+.env
+.env.*
+!.env.example
+data/settings.json
+
+# Local runtime data and generated CSV logs
+data/*.csv
+!data/.gitkeep
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
