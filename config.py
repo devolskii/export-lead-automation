@@ -35,6 +35,8 @@ def load_settings():
         "google_cse_api_key": os.getenv("GOOGLE_CSE_API_KEY", ""),
         "google_cse_cx": os.getenv("GOOGLE_CSE_CX", ""),
         "search_keyword": os.getenv("SEARCH_KEYWORD", "Singing Bowls"),
+        "search_city": os.getenv("SEARCH_CITY", ""),
+        "search_country": os.getenv("SEARCH_COUNTRY", ""),
         "daily_send_limit": int(os.getenv("DAILY_SEND_LIMIT", 100)),
         "send_delay_seconds": float(os.getenv("SEND_DELAY_SECONDS", 2.0)),
         "presentation_path": os.getenv("PRESENTATION_PATH", "assets/company_presentation.pdf"),

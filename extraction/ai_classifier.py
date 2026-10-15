@@ -82,15 +82,15 @@ def run_classification_pipeline():
             
     with open(BUSINESS_EMAILS_CSV, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'country', 'source_platform'])
+        writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'city', 'country', 'source_platform'])
         for r in biz_records:
-            writer.writerow([r.get('email'), r.get('buyer_name'), r.get('company_name'), r.get('website'), r.get('country'), r.get('source_platform')])
+            writer.writerow([r.get('email'), r.get('buyer_name'), r.get('company_name'), r.get('website'), r.get('city', ''), r.get('country'), r.get('source_platform')])
 
     with open(INDIVIDUAL_EMAILS_CSV, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'country', 'source_platform'])
+        writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'city', 'country', 'source_platform'])
         for r in ind_records:
-            writer.writerow([r.get('email'), r.get('buyer_name'), r.get('company_name'), r.get('website'), r.get('country'), r.get('source_platform')])
+            writer.writerow([r.get('email'), r.get('buyer_name'), r.get('company_name'), r.get('website'), r.get('city', ''), r.get('country'), r.get('source_platform')])
             
     return {
         'total': len(records),

@@ -2,14 +2,20 @@
 {% set active_page = 'send' %}
 
 {% block content %}
-<h2 class="mb-4">Outreach Campaign Dispatch</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="m-0">Outreach Campaign Dispatch</h2>
+        <small class="text-muted">Compose rich personalized HTML emails, embed images, and attach PDF presentations</small>
+    </div>
+</div>
 
 <div class="row">
     <div class="col-md-8">
         <div class="card card-stat bg-white p-4">
-            <form action="/send" method="POST">
+            <form action="/send" method="POST" enctype="multipart/form-data" id="campaignForm">
+                <!-- Target Audience -->
                 <div class="mb-3">
-                    <label class="form-label font-weight-bold">Target Audience Segment</label>
+                    <label class="form-label fw-bold">Target Audience Segment</label>
                     <select name="audience" class="form-select">
                         <option value="both">All Discovered Buyers (data/buyers.csv)</option>
                         <option value="business">Business Segment Only (data/business_emails.csv)</option>
@@ -17,37 +23,657 @@
                     </select>
                 </div>
 
+                <!-- Email Subject -->
                 <div class="mb-3">
-                    <label class="form-label font-weight-bold">Email Subject</label>
-                    <input type="text" name="subject" class="form-control" value="{{ settings.default_subject }}" required>
+                    <label class="form-label fw-bold">Email Subject</label>
+                    <input type="text" name="subject" id="emailSubject" class="form-control" value="{{ settings.default_subject }}" required>
+                    <div class="mt-1">
+                        <small class="text-muted">Insert into subject: </small>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill small" onclick="insertSubjectVariable('{{ '{{buyer_name}}' }}')">+ Buyer Name</button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-2 rounded-pill small" onclick="insertSubjectVariable('{{ '{{company_name}}' }}')">+ Company</button>
+                    </div>
                 </div>
 
+                <!-- Rich Text & HTML Body Editor -->
                 <div class="mb-3">
-                    <label class="form-label font-weight-bold">Email Body Template</label>
-                    <textarea name="body" class="form-control" rows="8" required>{{ settings.default_body }}</textarea>
-                    <small class="text-muted">Available template variables: <code>{{ '{{buyer_name}}' }}</code>, <code>{{ '{{company_name}}' }}</code></small>
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <label class="form-label fw-bold m-0">Email Body & Presentation</label>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button type="button" class="btn btn-outline-primary" id="btnToggleMode" onclick="toggleEditorMode()">
+                                <span id="toggleModeIcon">&lt;/&gt;</span> <span id="toggleModeText">Embed HTML / Source</span>
+                            </button>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                    📋 Templates
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTemplate('b2b_intro')">B2B Export Intro & Highlights</a></li>
+                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTemplate('catalog_table')">Product Catalog & MOQ Table</a></li>
+                                    <li><a class="dropdown-item" href="javascript:void(0)" onclick="loadTemplate('clean_reset')">Reset to Default Settings</a></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Editor Toolbar -->
+                    <div id="editorToolbar" class="border border-bottom-0 bg-light p-2 rounded-top d-flex flex-wrap gap-1 align-items-center">
+                        <!-- Headings -->
+                        <select class="form-select form-select-sm" style="width: 110px;" onchange="formatDoc('formatBlock', this.value); this.selectedIndex=0;">
+                            <option selected disabled>Style</option>
+                            <option value="p">Paragraph</option>
+                            <option value="h2">Heading 1</option>
+                            <option value="h3">Heading 2</option>
+                            <option value="h4">Heading 3</option>
+                        </select>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Basic Formatting -->
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Bold (Ctrl+B)" onclick="formatDoc('bold')"><b>B</b></button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Italic (Ctrl+I)" onclick="formatDoc('italic')"><i>I</i></button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Underline (Ctrl+U)" onclick="formatDoc('underline')"><u>U</u></button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Strikethrough" onclick="formatDoc('strikeThrough')"><s>S</s></button>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Colors -->
+                        <label class="btn btn-sm btn-white border px-2 py-1 m-0 d-flex align-items-center" title="Text Color">
+                            <span style="font-weight: bold; color: #dc3545;">A</span>
+                            <input type="color" id="textColorPicker" onchange="formatDoc('foreColor', this.value)" style="opacity: 0; width: 0; height: 0; padding: 0; border: none; position: absolute;">
+                        </label>
+                        <label class="btn btn-sm btn-white border px-2 py-1 m-0 d-flex align-items-center" title="Highlight Color">
+                            <span style="background-color: #ffc107; padding: 0 4px; border-radius: 2px; font-weight: bold;">H</span>
+                            <input type="color" id="hiliteColorPicker" onchange="formatDoc('hiliteColor', this.value)" style="opacity: 0; width: 0; height: 0; padding: 0; border: none; position: absolute;">
+                        </label>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Alignment -->
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Align Left" onclick="formatDoc('justifyLeft')">⬅️</button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Align Center" onclick="formatDoc('justifyCenter')">↔️</button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Align Right" onclick="formatDoc('justifyRight')">➡️</button>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Lists -->
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Bullet List" onclick="formatDoc('insertUnorderedList')">• List</button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Numbered List" onclick="formatDoc('insertOrderedList')">1. List</button>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Link & Image Insert -->
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Insert Link" onclick="promptInsertLink()">🔗 Link</button>
+                        <button type="button" class="btn btn-sm btn-primary px-2 py-1" title="Insert Image" onclick="openImageModal()">🖼️ Insert Image</button>
+                        <button type="button" class="btn btn-sm btn-white border px-2 py-1" title="Insert Table" onclick="insertTableSnippet()">📊 Table</button>
+
+                        <div class="vr mx-1"></div>
+
+                        <!-- Insert Personalization -->
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-sm btn-light border px-2 py-1 dropdown-toggle" data-bs-toggle="dropdown">
+                                👤 Insert Variable
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="insertBodyVariable('{{ '{{buyer_name}}' }}')">Buyer Name (<code>{{ '{{buyer_name}}' }}</code>)</a></li>
+                                <li><a class="dropdown-item" href="javascript:void(0)" onclick="insertBodyVariable('{{ '{{company_name}}' }}')">Company Name (<code>{{ '{{company_name}}' }}</code>)</a></li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Visual WYSIWYG Editor Area -->
+                    <div id="visualEditor" contenteditable="true" class="form-control" style="min-height: 280px; max-height: 520px; overflow-y: auto; border-radius: 0 0 6px 6px; background-color: #fff; font-size: 15px; line-height: 1.6;"></div>
+
+                    <!-- HTML Source / Embed Area (Monospace) -->
+                    <textarea id="htmlEditor" class="form-control font-monospace" style="display: none; min-height: 280px; max-height: 520px; border-radius: 0 0 6px 6px; font-size: 13px; background-color: #0f172a; color: #38bdf8;" placeholder="Paste or type raw HTML code here..."></textarea>
+
+                    <!-- Actual Form Field Submitted to Flask -->
+                    <textarea name="body" id="hiddenBodyInput" style="display: none;" required></textarea>
+
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                        <small class="text-muted">
+                            💡 <strong>Tip:</strong> Drag & drop images directly into the editor, or paste from clipboard (Ctrl+V). Click <code>&lt;/&gt; Embed HTML</code> to insert raw HTML templates.
+                        </small>
+                        <span id="editorStats" class="badge bg-light text-secondary border small">0 chars</span>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label class="form-label font-weight-bold">Company Presentation Attachment Path</label>
-                    <input type="text" name="attachment_path" class="form-control" value="{{ settings.presentation_path }}">
+                <!-- PDF Attachment Control -->
+                <div class="card p-3 mb-4 bg-light border">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <div class="form-check form-switch m-0">
+                            <input class="form-check-input" type="checkbox" name="attach_pdf" id="attachPdfCheck" value="1" checked onchange="togglePdfSection()">
+                            <label class="form-check-label fw-bold" for="attachPdfCheck">📎 Attach PDF Presentation / Catalog</label>
+                        </div>
+                        <span class="badge bg-success" id="pdfStatusBadge">Attachment Enabled</span>
+                    </div>
+
+                    <div id="pdfOptionsContainer">
+                        <div class="row g-3 align-items-center">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Upload New PDF File</label>
+                                <input type="file" name="pdf_file" id="pdfFileInput" accept=".pdf" class="form-control form-control-sm" onchange="handlePdfFileSelected(this)">
+                                <small class="text-muted" id="pdfFileInfo">Choose a PDF from your computer</small>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold text-secondary mb-1">Or Existing Server PDF Path</label>
+                                <input type="text" name="attachment_path" id="attachmentPathInput" class="form-control form-control-sm" value="{{ settings.presentation_path }}" placeholder="assets/company_presentation.pdf">
+                                <small class="text-muted">
+                                    {% if presentation_exists %}
+                                    <span class="text-success">✓ Current: {{ presentation_filename }} ({{ presentation_size }} KB)</span>
+                                    {% else %}
+                                    <span class="text-warning">Default PDF not found on server</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <button type="submit" class="btn btn-primary btn-lg w-100">🚀 Launch Gmail Outreach Campaign</button>
+                <button type="submit" class="btn btn-primary btn-lg w-100" id="btnLaunchCampaign">
+                    <span id="btnLaunchText">🚀 Launch Gmail Outreach Campaign</span>
+                </button>
             </form>
         </div>
     </div>
 
+    <!-- Pre-flight Checks & Helper Cards -->
     <div class="col-md-4">
-        <div class="card card-stat bg-white p-4">
+        <div class="card card-stat bg-white p-4 mb-4">
             <h5>Campaign Pre-flight Checks</h5>
-            <ul class="list-unstyled mt-3">
-                <li class="mb-2"><strong>Gmail Account:</strong><br><code>{{ settings.gmail_email or 'Not configured!' }}</code></li>
-                <li class="mb-2"><strong>App Password:</strong><br>{% if settings.gmail_app_password %}<span class="badge bg-success">Configured</span>{% else %}<span class="badge bg-danger">Missing</span>{% endif %}</li>
-                <li class="mb-2"><strong>Presentation File:</strong><br>{% if presentation_exists %}<span class="badge bg-success">Found ({{ presentation_size }} KB)</span>{% else %}<span class="badge bg-warning">File missing!</span>{% endif %}</li>
-                <li class="mb-2"><strong>Throttling Delay:</strong><br>{{ settings.send_delay_seconds }} seconds between sends</li>
+            <ul class="list-unstyled mt-3 mb-0">
+                <li class="mb-3">
+                    <strong>Gmail Account:</strong><br>
+                    <code>{{ settings.gmail_email or 'Not configured!' }}</code>
+                </li>
+                <li class="mb-3">
+                    <strong>App Password:</strong><br>
+                    {% if settings.gmail_app_password %}
+                        <span class="badge bg-success">Configured & Secure</span>
+                    {% else %}
+                        <span class="badge bg-danger">Missing in Settings!</span>
+                    {% endif %}
+                </li>
+                <li class="mb-3">
+                    <strong>Attachment Status:</strong><br>
+                    <span id="sidebarAttachStatus">
+                        {% if presentation_exists %}
+                            <span class="badge bg-success">Ready: {{ presentation_filename }} ({{ presentation_size }} KB)</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">File missing</span>
+                        {% endif %}
+                    </span>
+                </li>
+                <li class="mb-2">
+                    <strong>Rate Throttling:</strong><br>
+                    <span class="text-secondary">{{ settings.send_delay_seconds }}s delay • Limit {{ settings.daily_send_limit }}/day</span>
+                </li>
+            </ul>
+        </div>
+
+        <div class="card card-stat bg-white p-4">
+            <h6>💡 Email Formatting Guide</h6>
+            <ul class="small text-muted ps-3 mb-0">
+                <li class="mb-2"><strong>Personalization:</strong> Use <code>{{ '{{buyer_name}}' }}</code> and <code>{{ '{{company_name}}' }}</code> to automatically personalize each email.</li>
+                <li class="mb-2"><strong>Inline Images:</strong> Embedded images are converted to MIME CID inline attachments, ensuring they display in Gmail, Outlook, and Apple Mail without remote image blocking.</li>
+                <li class="mb-2"><strong>HTML Templates:</strong> Switch to HTML mode to embed custom banners, pricing tables, or promotional code.</li>
+                <li><strong>PDF Presentations:</strong> Select any PDF file from your device to accompany your pitch.</li>
             </ul>
         </div>
     </div>
 </div>
+
+<!-- Modal: Insert Image -->
+<div class="modal fade" id="imageModal" tabindex="-1" aria-labelledby="imageModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imageModalLabel">🖼️ Insert Image into Email Body</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs mb-3" id="imageTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="upload-tab" data-bs-toggle="tab" data-bs-target="#upload-pane" type="button" role="tab">📁 Upload from Computer</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-pane" type="button" role="tab">🌐 Image Web URL</button>
+                    </li>
+                </ul>
+                <div class="tab-content" id="imageTabContent">
+                    <!-- Upload Tab -->
+                    <div class="tab-pane fade show active" id="upload-pane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Choose Image File (PNG, JPG, JPEG, GIF, WEBP)</label>
+                            <input type="file" id="modalImageFileInput" accept="image/*" class="form-control" onchange="previewSelectedImage(this)">
+                        </div>
+                        <div id="imagePreviewContainer" class="text-center p-2 border rounded bg-light" style="display: none; max-height: 220px; overflow: hidden;">
+                            <img id="imagePreview" src="" alt="Preview" style="max-height: 200px; max-width: 100%; border-radius: 4px;">
+                        </div>
+                    </div>
+                    <!-- URL Tab -->
+                    <div class="tab-pane fade" id="url-pane" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Image URL</label>
+                            <input type="url" id="modalImageUrl" class="form-control" placeholder="https://example.com/images/catalog-banner.jpg">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold">Alt Description (Optional)</label>
+                            <input type="text" id="modalImageAlt" class="form-control" placeholder="Product Catalog Showcase">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-2 mt-2">
+                    <div class="col-md-6">
+                        <label class="form-label small text-secondary">Width</label>
+                        <select id="modalImageWidth" class="form-select form-select-sm">
+                            <option value="100%" selected>Full Width (100%)</option>
+                            <option value="75%">Medium Width (75%)</option>
+                            <option value="50%">Compact (50%)</option>
+                            <option value="auto">Original Dimensions</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small text-secondary">Alignment</label>
+                        <select id="modalImageAlign" class="form-select form-select-sm">
+                            <option value="center" selected>Center</option>
+                            <option value="left">Left</option>
+                            <option value="right">Right</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="confirmInsertImage()">Insert Image</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initial Content Setup
+const initialRaw = `{{ settings.default_body | e }}`;
+const visualEditor = document.getElementById('visualEditor');
+const htmlEditor = document.getElementById('htmlEditor');
+const hiddenBodyInput = document.getElementById('hiddenBodyInput');
+const editorStats = document.getElementById('editorStats');
+
+function initEditorContent() {
+    let content = initialRaw.trim();
+    if (content.length > 0 && !/<[a-z][\s\S]*>/i.test(content)) {
+        // Convert plain text newlines into clean HTML paragraphs
+        const paragraphs = content.split('\n\n');
+        content = paragraphs.map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('');
+    }
+    visualEditor.innerHTML = content || '<p>Hello <strong>{{buyer_name}}</strong>,</p><p>We are a premium supplier. Attached is our catalog and presentation.</p>';
+    htmlEditor.value = visualEditor.innerHTML;
+    updateStats();
+}
+
+function updateStats() {
+    const text = visualEditor.innerText || '';
+    const charCount = text.length;
+    const htmlSizeKb = (new Blob([visualEditor.innerHTML]).size / 1024).toFixed(1);
+    editorStats.innerText = `${charCount} chars • ${htmlSizeKb} KB HTML`;
+}
+
+visualEditor.addEventListener('input', updateStats);
+htmlEditor.addEventListener('input', function() {
+    const htmlSizeKb = (new Blob([htmlEditor.value]).size / 1024).toFixed(1);
+    editorStats.innerText = `HTML Source • ${htmlSizeKb} KB`;
+});
+
+// Mode Toggle: Visual vs HTML Source
+let isHtmlMode = false;
+function toggleEditorMode() {
+    isHtmlMode = !isHtmlMode;
+    const btnText = document.getElementById('toggleModeText');
+    const btnIcon = document.getElementById('toggleModeIcon');
+    const toolbar = document.getElementById('editorToolbar');
+
+    if (isHtmlMode) {
+        htmlEditor.value = visualEditor.innerHTML;
+        visualEditor.style.display = 'none';
+        htmlEditor.style.display = 'block';
+        toolbar.style.opacity = '0.5';
+        toolbar.style.pointerEvents = 'none';
+        btnText.innerText = 'Visual Editor';
+        btnIcon.innerText = '👁️';
+        htmlEditor.focus();
+    } else {
+        visualEditor.innerHTML = htmlEditor.value;
+        htmlEditor.style.display = 'none';
+        visualEditor.style.display = 'block';
+        toolbar.style.opacity = '1';
+        toolbar.style.pointerEvents = 'auto';
+        btnText.innerText = 'Embed HTML / Source';
+        btnIcon.innerText = '</>';
+        visualEditor.focus();
+        updateStats();
+    }
+}
+
+// Executive Rich Text Formatting
+function formatDoc(cmd, value = null) {
+    if (isHtmlMode) return;
+    visualEditor.focus();
+    document.execCommand(cmd, false, value);
+    updateStats();
+}
+
+function promptInsertLink() {
+    if (isHtmlMode) return;
+    const url = prompt("Enter hyperlink URL (e.g. https://yourcompany.com):", "https://");
+    if (url && url !== "https://") {
+        formatDoc('createLink', url);
+    }
+}
+
+function insertTableSnippet() {
+    const tableHtml = `
+    <table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;">
+        <thead>
+            <tr style="background-color: #f1f5f9;">
+                <th style="padding: 8px 12px; border: 1px solid #cbd5e1; text-align: left;">Product Item</th>
+                <th style="padding: 8px 12px; border: 1px solid #cbd5e1; text-align: left;">Specifications</th>
+                <th style="padding: 8px 12px; border: 1px solid #cbd5e1; text-align: left;">MOQ</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Singing Bowl Set</td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">7 Bronze Metals (Hand-hammered)</td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">10 Sets</td>
+            </tr>
+            <tr>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Cushion & Striker Mallets</td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">Silk brocade + Suede mallet</td>
+                <td style="padding: 8px 12px; border: 1px solid #cbd5e1;">25 Units</td>
+            </tr>
+        </tbody>
+    </table><p><br></p>`;
+    insertHtmlIntoEditor(tableHtml);
+}
+
+// Variable Insertions
+function insertSubjectVariable(varText) {
+    const subjInput = document.getElementById('emailSubject');
+    subjInput.value += ` ${varText}`;
+    subjInput.focus();
+}
+
+function insertBodyVariable(varText) {
+    if (isHtmlMode) {
+        insertAtCursor(htmlEditor, varText);
+    } else {
+        insertHtmlIntoEditor(`<strong>${varText}</strong> `);
+    }
+}
+
+function insertHtmlIntoEditor(htmlSnippet) {
+    if (isHtmlMode) {
+        insertAtCursor(htmlEditor, htmlSnippet);
+        return;
+    }
+    visualEditor.focus();
+    const sel = window.getSelection();
+    if (sel.getRangeAt && sel.rangeCount) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const el = document.createElement("div");
+        el.innerHTML = htmlSnippet;
+        const frag = document.createDocumentFragment();
+        let node, lastNode;
+        while ((node = el.firstChild)) {
+            lastNode = frag.appendChild(node);
+        }
+        range.insertNode(frag);
+        if (lastNode) {
+            range.setStartAfter(lastNode);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+    } else {
+        visualEditor.innerHTML += htmlSnippet;
+    }
+    updateStats();
+}
+
+function insertAtCursor(myField, myValue) {
+    if (myField.selectionStart || myField.selectionStart === 0) {
+        const startPos = myField.selectionStart;
+        const endPos = myField.selectionEnd;
+        myField.value = myField.value.substring(0, startPos) + myValue + myField.value.substring(endPos, myField.value.length);
+        myField.selectionStart = startPos + myValue.length;
+        myField.selectionEnd = startPos + myValue.length;
+    } else {
+        myField.value += myValue;
+    }
+}
+
+// Image Handling (Modal, Drag/Drop, Paste)
+let imageModalInstance = null;
+function openImageModal() {
+    if (!imageModalInstance) {
+        imageModalInstance = new bootstrap.Modal(document.getElementById('imageModal'));
+    }
+    document.getElementById('modalImageFileInput').value = '';
+    document.getElementById('imagePreviewContainer').style.display = 'none';
+    document.getElementById('imagePreview').src = '';
+    document.getElementById('modalImageUrl').value = '';
+    imageModalInstance.show();
+}
+
+function previewSelectedImage(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('imagePreview').src = e.target.result;
+            document.getElementById('imagePreviewContainer').style.display = 'block';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+function confirmInsertImage() {
+    const activeTab = document.querySelector('#imageTab .nav-link.active').id;
+    const widthVal = document.getElementById('modalImageWidth').value;
+    const alignVal = document.getElementById('modalImageAlign').value;
+    const altText = document.getElementById('modalImageAlt').value || 'Export Product Image';
+
+    let widthStyle = widthVal === 'auto' ? 'max-width: 100%; height: auto;' : `width: ${widthVal}; max-width: 100%; height: auto;`;
+    let alignContainer = 'text-align: center;';
+    if (alignVal === 'left') alignContainer = 'text-align: left;';
+    if (alignVal === 'right') alignContainer = 'text-align: right;';
+
+    if (activeTab === 'upload-tab') {
+        const fileInput = document.getElementById('modalImageFileInput');
+        if (!fileInput.files || !fileInput.files[0]) {
+            alert("Please select an image file to upload.");
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const dataUri = e.target.result;
+            const imgHtml = `<div style="${alignContainer} margin: 15px 0;"><img src="${dataUri}" alt="${altText}" style="${widthStyle} border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" /></div><p><br></p>`;
+            insertHtmlIntoEditor(imgHtml);
+            imageModalInstance.hide();
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+    } else {
+        const url = document.getElementById('modalImageUrl').value.trim();
+        if (!url) {
+            alert("Please enter a valid image URL.");
+            return;
+        }
+        const imgHtml = `<div style="${alignContainer} margin: 15px 0;"><img src="${url}" alt="${altText}" style="${widthStyle} border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" /></div><p><br></p>`;
+        insertHtmlIntoEditor(imgHtml);
+        imageModalInstance.hide();
+    }
+}
+
+// Drag & Drop / Clipboard Paste for Images
+visualEditor.addEventListener('paste', function(e) {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let item of items) {
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+            e.preventDefault();
+            const blob = item.getAsFile();
+            const reader = new FileReader();
+            reader.onload = function(evt) {
+                const imgHtml = `<div style="text-align: center; margin: 15px 0;"><img src="${evt.target.result}" style="max-width: 100%; height: auto; border-radius: 6px;" /></div><p><br></p>`;
+                insertHtmlIntoEditor(imgHtml);
+            };
+            reader.readAsDataURL(blob);
+            return;
+        }
+    }
+});
+
+visualEditor.addEventListener('dragover', function(e) {
+    e.preventDefault();
+});
+
+visualEditor.addEventListener('drop', function(e) {
+    e.preventDefault();
+    if (e.dataTransfer && e.dataTransfer.files) {
+        for (let file of e.dataTransfer.files) {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(evt) {
+                    const imgHtml = `<div style="text-align: center; margin: 15px 0;"><img src="${evt.target.result}" style="max-width: 100%; height: auto; border-radius: 6px;" /></div><p><br></p>`;
+                    insertHtmlIntoEditor(imgHtml);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+    }
+});
+
+// PDF Attachment Handling
+function togglePdfSection() {
+    const isChecked = document.getElementById('attachPdfCheck').checked;
+    const container = document.getElementById('pdfOptionsContainer');
+    const badge = document.getElementById('pdfStatusBadge');
+    const sidebarStatus = document.getElementById('sidebarAttachStatus');
+
+    if (isChecked) {
+        container.style.display = 'block';
+        badge.className = 'badge bg-success';
+        badge.innerText = 'Attachment Enabled';
+        sidebarStatus.innerHTML = '<span class="badge bg-success">PDF Attached</span>';
+    } else {
+        container.style.display = 'none';
+        badge.className = 'badge bg-secondary';
+        badge.innerText = 'No Attachment';
+        sidebarStatus.innerHTML = '<span class="badge bg-secondary">No PDF Attached</span>';
+    }
+}
+
+function handlePdfFileSelected(input) {
+    const info = document.getElementById('pdfFileInfo');
+    const badge = document.getElementById('pdfStatusBadge');
+    const sidebarStatus = document.getElementById('sidebarAttachStatus');
+
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const sizeKb = (file.size / 1024).toFixed(1);
+        info.innerHTML = `<span class="text-success fw-bold">✓ Selected: ${file.name} (${sizeKb} KB)</span>`;
+        badge.innerText = `Uploaded: ${file.name}`;
+        sidebarStatus.innerHTML = `<span class="badge bg-primary">Upload: ${file.name} (${sizeKb} KB)</span>`;
+    } else {
+        info.innerText = 'Choose a PDF from your computer';
+    }
+}
+
+// Built-in Email Templates
+function loadTemplate(tplKey) {
+    if (tplKey === 'b2b_intro') {
+        const html = `
+<p>Dear <strong>{{buyer_name}}</strong>,</p>
+<p>Greetings from the Export Business Development Team at <strong>{{company_name}}</strong>.</p>
+<p>We are a certified direct manufacturer and exporter specializing in high-grade singing bowls, sound therapy instruments, and Himalayan handicraft products.</p>
+<div style="background-color: #f8fafc; padding: 18px; border-left: 4px solid #0284c7; margin: 18px 0; border-radius: 6px;">
+    <h4 style="margin-top: 0; color: #0369a1; font-size: 16px;">✨ Key Wholesale Export Capabilities:</h4>
+    <ul style="margin-bottom: 0; padding-left: 20px;">
+        <li><strong>Direct Wholesale Pricing:</strong> Factory-direct quotes with scalable bulk pricing tiers.</li>
+        <li><strong>Acoustic Tuning:</strong> Master-hammered frequencies tuned to 432Hz & 528Hz chakras.</li>
+        <li><strong>Custom OEM & Branding:</strong> Laser engraving, bespoke velvet gift boxes, and private labeling.</li>
+        <li><strong>Express International Logistics:</strong> Reliable door-to-door shipping via DHL, FedEx, and Air Cargo.</li>
+    </ul>
+</div>
+<p>We have attached our corporate presentation and complete catalog with detailed product weights, diameters, and pricing.</p>
+<p>Could we arrange a brief call or send over a curated sample shipment for your review?</p>
+<p>Best regards,<br><strong>International Export & BD Team</strong></p>`;
+        setEditorContent(html);
+    } else if (tplKey === 'catalog_table') {
+        const html = `
+<p>Hello <strong>{{buyer_name}}</strong>,</p>
+<p>We are pleased to introduce our export catalog for <strong>{{company_name}}</strong>.</p>
+<table style="width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;">
+    <thead>
+        <tr style="background-color: #f1f5f9;">
+            <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Product Item</th>
+            <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Specifications</th>
+            <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">MOQ</th>
+            <th style="padding: 10px; border: 1px solid #cbd5e1; text-align: left;">Lead Time</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">7-Metal Singing Bowls</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">Hand-hammered, 4" - 12" diameter</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">10 Sets</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">3-5 Days</td>
+        </tr>
+        <tr>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">Full Moon Healing Bowls</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">Consecrated bronze, sustained resonance</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">5 Pieces</td>
+            <td style="padding: 10px; border: 1px solid #cbd5e1;">5-7 Days</td>
+        </tr>
+    </tbody>
+</table>
+<p>Attached is our comprehensive PDF presentation with high-resolution imagery and full FOB price lists.</p>
+<p>Warm regards,<br>Export Sales Team</p>`;
+        setEditorContent(html);
+    } else if (tplKey === 'clean_reset') {
+        initEditorContent();
+    }
+}
+
+function setEditorContent(html) {
+    if (isHtmlMode) {
+        htmlEditor.value = html.trim();
+    } else {
+        visualEditor.innerHTML = html.trim();
+    }
+    updateStats();
+}
+
+// Form Submission Hook
+document.getElementById('campaignForm').addEventListener('submit', function(e) {
+    if (isHtmlMode) {
+        hiddenBodyInput.value = htmlEditor.value.trim();
+    } else {
+        hiddenBodyInput.value = visualEditor.innerHTML.trim();
+    }
+
+    if (!hiddenBodyInput.value) {
+        e.preventDefault();
+        alert("Email body cannot be empty!");
+        return false;
+    }
+
+    const btn = document.getElementById('btnLaunchCampaign');
+    const text = document.getElementById('btnLaunchText');
+    btn.disabled = true;
+    text.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span> Dispatching Outreach Campaign...';
+});
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initEditorContent);
+</script>
 {% endblock %}

@@ -19,6 +19,7 @@ data/settings.json
 # Local runtime data and generated CSV logs
 data/*.csv
 !data/.gitkeep
+assets
 
 # IDEs & Editors
 .vscode/

@@ -43,6 +43,16 @@
                     <label class="form-label">Search Niche / Product Keyword</label>
                     <input type="text" name="search_keyword" class="form-control" value="{{ settings.search_keyword }}" required>
                 </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Default Search City (Optional)</label>
+                        <input type="text" name="search_city" class="form-control" value="{{ settings.search_city or '' }}" placeholder="e.g. London, Berlin, New York">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Default Search Country (Optional)</label>
+                        <input type="text" name="search_country" class="form-control" value="{{ settings.search_country or '' }}" placeholder="e.g. United Kingdom, Germany">
+                    </div>
+                </div>
                 <div class="mb-3">
                     <label class="form-label">Daily Send Limit</label>
                     <input type="number" name="daily_send_limit" class="form-control" value="{{ settings.daily_send_limit }}" required>

@@ -5,9 +5,12 @@ from extraction.data_extractor import normalize_buyer_record
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)'}
 
-def search_website(keyword: str) -> list[dict]:
+def search_website(keyword: str, city: str = '', country: str = '') -> list[dict]:
     records = []
-    query = f"\"{keyword}\" wholesale distributor contact email website"
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_terms = " ".join(f'"{p}"' for p in loc_parts)
+    loc_clause = f' {loc_terms}' if loc_terms else ''
+    query = f"\"{keyword}\"{loc_clause} wholesale distributor contact email website"
     url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -16,6 +19,8 @@ def search_website(keyword: str) -> list[dict]:
             for r in soup.find_all('div', class_='result'):
                 extracted = normalize_buyer_record({
                     'content': r.get_text(),
+                    'city': city,
+                    'country': country,
                     'source_platform': 'Company Website'
                 })
                 records.extend(extracted)

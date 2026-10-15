@@ -3,9 +3,59 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Dashboard</h2>
-    <form action="/run-discovery" method="POST" class="d-inline">
-        <button type="submit" class="btn btn-primary btn-lg">🔍 Run Buyer Discovery Pipeline</button>
+    <div>
+        <h2 class="m-0">Dashboard</h2>
+        <small class="text-muted">International B2B Lead Generation & Automated Outreach</small>
+    </div>
+</div>
+
+<div class="card card-stat bg-white p-4 mb-4 border-start border-4 border-primary">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="m-0 text-primary">🔍 Buyer Discovery Pipeline Search</h5>
+        <div>
+            {% if settings.search_city or settings.search_country %}
+            <span class="badge bg-light text-dark border">
+                📍 Target: 
+                {% if settings.search_city %}<strong>{{ settings.search_city }}</strong>{% endif %}{% if settings.search_city and settings.search_country %}, {% endif %}
+                {% if settings.search_country %}<strong>{{ settings.search_country }}</strong>{% endif %}
+            </span>
+            {% else %}
+            <span class="badge bg-light text-muted border">🌍 Target: Worldwide / All Locations</span>
+            {% endif %}
+        </div>
+    </div>
+    <form action="/run-discovery" method="POST" id="discoveryForm">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label fw-semibold small text-secondary">Niche / Product Keyword</label>
+                <input type="text" name="keyword" class="form-control" value="{{ settings.search_keyword }}" placeholder="e.g. Singing Bowls, Handicrafts..." required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small text-secondary">City (Optional)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">🏙️</span>
+                    <input type="text" name="city" class="form-control" value="{{ settings.search_city or '' }}" placeholder="e.g. London, Berlin, New York">
+                </div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold small text-secondary">Country (Optional)</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-light text-muted">🌐</span>
+                    <input type="text" name="country" class="form-control" value="{{ settings.search_country or '' }}" placeholder="e.g. United Kingdom, Germany">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100" id="discoveryBtn">
+                    <span id="discoveryBtnText">🔍 Find Buyers</span>
+                </button>
+            </div>
+        </div>
+        <div class="mt-2 text-muted small d-flex justify-content-between align-items-center">
+            <span>Runs multi-source discovery across Hunter.io, Google, DuckDuckGo, Facebook, LinkedIn, Directories & Web.</span>
+            {% if settings.search_city or settings.search_country %}
+            <a href="javascript:void(0)" class="text-decoration-none text-danger small" onclick="document.getElementsByName('city')[0].value='';document.getElementsByName('country')[0].value='';">Clear Location Filter</a>
+            {% endif %}
+        </div>
     </form>
 </div>
 
@@ -39,7 +89,7 @@
 <div class="card card-stat bg-white p-4 mb-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h4 class="m-0">Recent Discovered Buyers <span class="badge bg-primary fs-6">{{ buyers|length }} Total</span></h4>
-        <input type="text" id="buyerSearch" class="form-control form-control-sm" placeholder="Filter by email, company, or source..." style="max-width: 280px;">
+        <input type="text" id="buyerSearch" class="form-control form-control-sm" placeholder="Filter by email, city, country, company..." style="max-width: 320px;">
     </div>
     <div class="table-responsive" style="max-height: 520px; overflow-y: auto;">
         <table class="table table-hover align-middle" id="buyersTable">
@@ -48,6 +98,7 @@
                     <th>Email</th>
                     <th>Buyer Name</th>
                     <th>Company</th>
+                    <th>City</th>
                     <th>Country</th>
                     <th>Source</th>
                     <th>Website</th>
@@ -59,6 +110,13 @@
                     <td><code>{{ b.email }}</code></td>
                     <td>{{ b.buyer_name }}</td>
                     <td>{{ b.company_name }}</td>
+                    <td>
+                        {% if b.city %}
+                            <span class="badge bg-light text-dark border">{{ b.city }}</span>
+                        {% else %}
+                            <span class="text-muted small">-</span>
+                        {% endif %}
+                    </td>
                     <td><span class="badge bg-secondary">{{ b.country }}</span></td>
                     <td>
                         {% if 'DuckDuckGo' in b.source_platform %}
@@ -78,7 +136,7 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="text-center text-muted">No buyers discovered yet. Click "Run Buyer Discovery Pipeline" to start.</td></tr>
+                <tr><td colspan="7" class="text-center text-muted py-4">No buyers discovered yet. Use the search bar above to start discovering leads.</td></tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -92,6 +150,15 @@ document.getElementById('buyerSearch')?.addEventListener('keyup', function() {
     rows.forEach(r => {
         r.style.display = r.textContent.toLowerCase().includes(val) ? '' : 'none';
     });
+});
+
+document.getElementById('discoveryForm')?.addEventListener('submit', function() {
+    const btn = document.getElementById('discoveryBtn');
+    const text = document.getElementById('discoveryBtnText');
+    if (btn && text) {
+        btn.disabled = true;
+        text.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Searching...';
+    }
 });
 </script>
 {% endblock %}

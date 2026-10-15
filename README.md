@@ -7,38 +7,47 @@ An end-to-end B2B buyer discovery, AI classification, and automated cold outreac
 ## 📌 Overview
 
 The **Export Lead Automation System** streamlines the entire B2B export sales development process:
-1. **Discovers prospective international buyers and importers** across multiple search engines and business channels.
-2. **Extracts, normalizes, and deduplicates contact data** (company name, contact email, country, website).
+1. **Discovers prospective international buyers and importers** targeted by product niche, **city, and country** across multiple search engines and business channels.
+2. **Extracts, normalizes, and deduplicates contact data** (company name, contact email, city, country, website).
 3. **Classifies leads with Google Gemini AI** into **Business** vs. **Individual** buyers.
-4. **Automates personalized email outreach** with product catalogs and PDF company presentations, respecting daily quotas and send delays.
-5. **Provides a Flask Web Dashboard** for real-time campaign monitoring, lead searching, and manual CSV imports.
+4. **Composes rich HTML outreach emails** with inline images, custom HTML templates, personalized variable injection, and uploaded PDF presentations/catalogs.
+5. **Provides an interactive Flask Web Dashboard** for real-time lead harvesting, location-based filtering, WYSIWYG campaign authoring, and downloadable audit reports.
 
 ---
 
 ## ✨ Features
 
-- 🔍 **Multi-Channel Lead Discovery**:
+- 🔍 **Location-Targeted Lead Discovery**:
+  - **City & Country Targeting**: Filter lead discovery by specific geographic locations (e.g., city: *London*, country: *United Kingdom*) across all search engines.
   - **DuckDuckGo API**: High-yield search with deep page crawling for contact emails and dual-engine fallback (DDGS + direct HTML).
   - **Google Custom Search API**: Programmable Search Engine (CSE) integration with web search fallback.
   - **Hunter.io API**: Official domain search for verified corporate decision-makers.
-  - **Social & Directory Scraping**: Facebook, LinkedIn, and global wholesale business directories.
+  - **Social & Directory Scraping**: Facebook, LinkedIn, Wikipedia, and global wholesale business directories.
+  - **Geographic Data Tagging**: Automatically captures and records the city and country for each discovered contact in `data/buyers.csv`.
 - 🤖 **AI-Powered Lead Segmentation**:
   - Integrates **Google Gemini API** (`google-genai`) to categorize leads into Business distributors vs. Individual retail consumers.
+- ✉️ **Rich Text & HTML Email Composer with Inline Images**:
+  - **Visual WYSIWYG Editor**: Full formatting toolbar with Bold, Italic, Underline, Strikethrough, Headings (H1/H2/H3/P), Colors, Highlight, Alignment, Bulleted & Numbered Lists, and Tables.
+  - **Embed HTML / Source Code Mode (`</>`)**: Switch seamlessly between visual editing and raw HTML mode to paste or embed custom email templates, banners, CSS styles, or pricing cards.
+  - **Inline Images in Email Body**: Insert images via local computer upload, drag-and-drop, clipboard paste (`Ctrl+V`), or web URL.
+  - **Automatic CID Attachment Conversion**: Embedded images are automatically converted to standard MIME `cid:` inline attachments, ensuring they display in Gmail, Outlook, and Apple Mail without remote image blocking warnings.
+  - **PDF Attachment Uploader**: Upload any `.pdf` presentation or catalog file directly from your computer, or use default server documents with an on/off toggle.
+  - **Built-in Outreach Templates**: Pre-packaged templates for B2B Export Intros and Product Catalog MOQ tables.
 - 📬 **Automated Cold Outreach**:
   - Secure Gmail SMTP with App Passwords.
-  - Automatic PDF presentation attachment handling.
+  - Dynamic personalization with `{{buyer_name}}` and `{{company_name}}` tokens.
   - Inter-email rate limiting to maintain domain reputation and prevent spam flagging.
   - Duplicate prevention to ensure contacts are never emailed twice.
 - 📊 **Interactive Web Dashboard**:
-  - Live search and filtering across all discovered leads.
-  - Source platform tagging (`DuckDuckGo API`, `Hunter.io`, `Google`, etc.).
+  - Live search bar and location-filtered discovery card.
+  - Discovered buyers table with City, Country, Source, and Website columns.
   - CSV lead import and exportable campaign reports.
 
 ---
 
 ## 🛠️ Development Steps & Architecture Timeline
 
-This system was built iteratively across 9 key development phases:
+This system was built iteratively across 10 key development phases:
 
 ### Phase 1: Modular System Architecture
 - Designed a decoupled, modular directory structure dividing concerns into `search/`, `extraction/`, `validation/`, `outreach/`, `reports/`, and `app_logging/`.
@@ -46,7 +55,7 @@ This system was built iteratively across 9 key development phases:
 
 ### Phase 2: Contact Normalization & Validation Engine
 - Built regex-based email extraction and validation rules ([validation/email_validator.py](validation/email_validator.py)) to filter out web assets (`.png`, `.jpg`, invalid domains).
-- Created [extraction/data_extractor.py](extraction/data_extractor.py) to automatically extract buyer names, company names from domains, and infer buyer countries from text context.
+- Created [extraction/data_extractor.py](extraction/data_extractor.py) to automatically extract buyer names, company names from domains, and infer buyer cities and countries from text context.
 
 ### Phase 3: Multi-Source Search Modules
 - Implemented search connectors for Google CSE, Hunter.io, Facebook, LinkedIn, and online trade directories.
@@ -82,6 +91,13 @@ This system was built iteratively across 9 key development phases:
 ### Phase 9: Version Control & Data Privacy Hardening
 - Configured [.gitignore](.gitignore) to strictly protect proprietary leads (`data/*.csv`) and credentials (`.env`, `data/settings.json`) from being tracked or exposed to public repositories.
 
+### Phase 10: Location-Based Targeting & Rich HTML Email Outreach
+- Added **Location-Based Discovery** supporting City and Country filters across all search engines and CLI scripts.
+- Enhanced the dashboard with an interactive search card with active location badges and a dedicated City column.
+- Upgraded the email campaign dispatcher ([templates/send.html](templates/send.html)) with a dual-mode **Visual WYSIWYG & Embed HTML Editor**, pre-built email templates, and variable insert buttons.
+- Implemented inline image embedding via local file upload, clipboard paste, and drag-and-drop, automatically converted to MIME CID inline attachments in [outreach/gmail_sender.py](outreach/gmail_sender.py).
+- Added direct **PDF File Upload** support allowing users to attach any custom presentation or catalog PDF directly from their device.
+
 ---
 
 ## 📁 Project Directory Structure
@@ -89,13 +105,13 @@ This system was built iteratively across 9 key development phases:
 ```text
 api-export/
 ├── app.py                      # Flask Web GUI application & routing
-├── main.py                     # CLI pipeline runner
+├── main.py                     # CLI pipeline runner with arguments
 ├── config.py                   # Central settings loader (env + JSON)
 ├── requirements.txt            # Project dependencies
 ├── .env.example                # Template for environment variables
 ├── .gitignore                  # Git privacy & exclusion rules
 │
-├── search/                     # Discovery connectors
+├── search/                     # Discovery connectors (with City & Country support)
 │   ├── duckduckgo_search.py    # DuckDuckGo API + deep page crawler
 │   ├── google_search.py        # Google Custom Search API connector
 │   ├── hunter_search.py        # Hunter.io API lead search
@@ -106,15 +122,15 @@ api-export/
 │
 ├── extraction/                 # Lead processing & AI
 │   ├── ai_classifier.py        # Google Gemini AI email classifier
-│   └── data_extractor.py       # Name, company, & country normalizer
+│   └── data_extractor.py       # Name, company, city, & country normalizer
 │
 ├── validation/                 # Validation utilities
 │   └── email_validator.py      # Strict email syntax & domain checker
 │
 ├── outreach/                   # Email campaign automation
-│   ├── gmail_sender.py         # SMTP sender with rate limiting & tracking
+│   ├── gmail_sender.py         # SMTP sender with HTML parsing & CID inline images
 │   ├── gmail_auth.py           # Gmail credentials verifier
-│   └── attachment_handler.py   # PDF attachment validator
+│   └── attachment_handler.py   # PDF attachment validator & resolver
 │
 ├── app_logging/                # Persistence & logging
 │   └── activity_logger.py      # CSV persistence for leads & sent logs
@@ -124,19 +140,21 @@ api-export/
 │
 ├── templates/                  # Bootstrap 5 Jinja2 HTML templates
 │   ├── layout.html             # Base sidebar layout
-│   ├── index.html              # Main dashboard with live search
+│   ├── index.html              # Main dashboard with location search & city column
 │   ├── upload.html             # CSV upload interface
 │   ├── classify.html           # Business vs Individual review
-│   ├── send.html               # Outreach composer & sender
+│   ├── send.html               # Rich WYSIWYG & HTML email composer + PDF uploader
 │   ├── report.html             # Audit logs & report download
-│   └── settings.html           # Settings editor
+│   └── settings.html           # Settings editor with default city & country
 │
 ├── assets/                     # Outbound campaign assets
-│   └── company_presentation.pdf# Company brochure / product catalog
+│   ├── company_presentation.pdf# Default company brochure / catalog
+│   ├── attachments/            # Uploaded PDF campaign attachments
+│   └── images/                 # Uploaded inline email body images
 │
 └── data/                       # Local database (Git-ignored)
     ├── .gitkeep                # Preserves folder in Git
-    ├── buyers.csv              # Master lead database
+    ├── buyers.csv              # Master lead database with city & country
     ├── business_emails.csv     # AI-classified B2B contacts
     ├── individual_emails.csv   # AI-classified individual contacts
     ├── sent_log.csv            # Outreach audit log
@@ -152,6 +170,7 @@ api-export/
 - A Gmail account with an **App Password** enabled ([Google App Passwords Guide](https://support.google.com/accounts/answer/185833))
 - *(Optional)* [Google Gemini API Key](https://aistudio.google.com/) for AI classification
 - *(Optional)* [Hunter.io API Key](https://hunter.io/) for verified corporate email searches
+- *(Optional)* [Google Custom Search API Key & CX ID](https://developers.google.com/custom-search/v1/overview)
 
 ### 2. Clone the Repository
 ```bash
@@ -193,6 +212,8 @@ GOOGLE_CSE_CX=your_google_cse_cx_id
 
 # Campaign Configuration
 SEARCH_KEYWORD=Singing Bowls
+SEARCH_CITY=Berlin
+SEARCH_COUNTRY=Germany
 DAILY_SEND_LIMIT=100
 SEND_DELAY_SECONDS=2.0
 PRESENTATION_PATH=assets/company_presentation.pdf
@@ -208,18 +229,29 @@ Start the Flask application:
 python app.py
 ```
 Open your browser at **http://localhost:5000** to:
-1. Click **"Run Buyer Discovery Pipeline"** to find new leads.
-2. Filter leads instantly by typing into the live search bar.
-3. Run **Gemini AI Classification** on the `/classify` tab.
-4. Launch email outreach directly from the `/send` tab.
+1. **Search Leads by Location**: Enter your product keyword and optional **City** and **Country** in the top discovery card, then click **"Find Buyers"**.
+2. **Review & Filter**: View discovered buyers with City and Country tags, or filter results in real-time with the search bar.
+3. **AI Classification**: Categorize contacts into Business vs. Individual buyers on the `/classify` tab.
+4. **Compose & Dispatch Email Campaigns**:
+   - Go to the `/send` tab.
+   - Use the **Rich Text Toolbar** to format your email, or click **`</> Embed HTML / Source`** to paste custom HTML templates.
+   - Click **`🖼️ Insert Image`**, drag-and-drop an image, or paste a screenshot (`Ctrl+V`) directly into the email body.
+   - Attach a custom PDF catalog from your device or use the default presentation.
+   - Click **"Launch Gmail Outreach Campaign"**.
 
 ### Option B: Command-Line Pipeline (CLI)
 To run the automated pipeline headlessly:
 ```bash
 python main.py
 ```
+
+You can also pass custom keyword and location parameters directly from the terminal:
+```bash
+python main.py --keyword "Singing Bowls" --city "Berlin" --country "Germany"
+```
+
 The CLI runner executes:
-1. Multi-source buyer discovery.
+1. Multi-source buyer discovery targeted by keyword and location.
 2. AI classification.
 3. Automated Gmail outreach with PDF presentation attachment.
 4. Terminal summary report.

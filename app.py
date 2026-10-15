@@ -1,10 +1,14 @@
 import csv
 import os
 import io
+import re
+import uuid
+import base64
+import mimetypes
 from pathlib import Path
-from flask import Flask, render_template, request, redirect, url_for, flash, Response
+from flask import Flask, render_template, request, redirect, url_for, flash, Response, jsonify, send_from_directory
 
-from config import load_settings, save_settings, BUYERS_CSV, SENT_LOG_CSV, BUSINESS_EMAILS_CSV, INDIVIDUAL_EMAILS_CSV
+from config import load_settings, save_settings, BUYERS_CSV, SENT_LOG_CSV, BUSINESS_EMAILS_CSV, INDIVIDUAL_EMAILS_CSV, BASE_DIR
 from app_logging.activity_logger import init_csv_files, get_existing_emails, log_buyers, get_sent_log_history
 from validation.email_validator import is_valid_email
 from search.google_search import search_google
@@ -35,29 +39,43 @@ def read_csv_records(filepath):
                     records.append(row)
     return records
 
+from search.hunter_search import search_hunter_io
+
 @app.route('/')
 def home():
+    settings = load_settings()
     report = generate_summary_report()
     buyers = read_csv_records(BUYERS_CSV)
-    return render_template('index.html', report=report, buyers=buyers[::-1])
-
-from search.hunter_search import search_hunter_io
+    return render_template('index.html', settings=settings, report=report, buyers=buyers[::-1])
 
 @app.route('/run-discovery', methods=['POST'])
 def run_discovery():
     settings = load_settings()
-    keyword = settings.get('search_keyword', 'Singing Bowls')
+    keyword = request.form.get('keyword', '').strip() if 'keyword' in request.form and request.form.get('keyword', '').strip() else settings.get('search_keyword', 'Singing Bowls')
+    city = request.form.get('city', '').strip() if 'city' in request.form else settings.get('search_city', '')
+    country = request.form.get('country', '').strip() if 'country' in request.form else settings.get('search_country', '')
     
-    flash(f"Running buyer discovery across Hunter.io, Google, DuckDuckGo, Facebook, LinkedIn, Directories & Web for '{keyword}'...", "info")
+    save_settings({
+        'search_keyword': keyword,
+        'search_city': city,
+        'search_country': country
+    })
+    
+    loc_desc = []
+    if city: loc_desc.append(city)
+    if country: loc_desc.append(country)
+    loc_str = f" in {', '.join(loc_desc)}" if loc_desc else ""
+    
+    flash(f"Running buyer discovery across Hunter.io, Google, DuckDuckGo, Facebook, LinkedIn, Directories & Web for '{keyword}'{loc_str}...", "info")
     
     all_raw = []
-    all_raw.extend(search_hunter_io(keyword))
-    all_raw.extend(search_google(keyword))
-    all_raw.extend(search_duckduckgo(keyword))
-    all_raw.extend(search_facebook(keyword))
-    all_raw.extend(search_linkedin(keyword))
-    all_raw.extend(search_directory(keyword))
-    all_raw.extend(search_website(keyword))
+    all_raw.extend(search_hunter_io(keyword, city=city, country=country))
+    all_raw.extend(search_google(keyword, city=city, country=country))
+    all_raw.extend(search_duckduckgo(keyword, city=city, country=country))
+    all_raw.extend(search_facebook(keyword, city=city, country=country))
+    all_raw.extend(search_linkedin(keyword, city=city, country=country))
+    all_raw.extend(search_directory(keyword, city=city, country=country))
+    all_raw.extend(search_website(keyword, city=city, country=country))
     
     added_count = log_buyers(all_raw)
     flash(f"Discovery pipeline finished! Discovered {len(all_raw)} total potential leads, added {added_count} new unique buyers to database.", "success")
@@ -85,6 +103,7 @@ def upload():
                         'buyer_name': row.get('buyer_name', 'Valued Customer'),
                         'company_name': row.get('company_name', ''),
                         'website': row.get('website', ''),
+                        'city': row.get('city', ''),
                         'country': row.get('country', 'International'),
                         'source_platform': row.get('source_platform', 'CSV Import')
                     })
@@ -129,7 +148,23 @@ def send():
         audience = request.form.get('audience', 'both')
         subject = request.form.get('subject')
         body = request.form.get('body')
-        attachment_path = request.form.get('attachment_path')
+        
+        # Determine PDF attachment
+        attach_pdf = request.form.get('attach_pdf') in ('1', 'true', 'on', 'yes')
+        attachment_path = ""
+        
+        if attach_pdf:
+            pdf_file = request.files.get('pdf_file')
+            if pdf_file and pdf_file.filename and pdf_file.filename.lower().endswith('.pdf'):
+                upload_dir = BASE_DIR / 'assets' / 'attachments'
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                clean_name = re.sub(r'[^a-zA-Z0-9_\-\.]', '_', pdf_file.filename)
+                target_pdf = upload_dir / clean_name
+                pdf_file.save(str(target_pdf))
+                attachment_path = str(target_pdf)
+            else:
+                custom_path = request.form.get('attachment_path', '').strip()
+                attachment_path = custom_path or settings.get('presentation_path', 'assets/company_presentation.pdf')
         
         if audience == 'business':
             buyers = read_csv_records(BUSINESS_EMAILS_CSV)
@@ -152,12 +187,55 @@ def send():
         
     presentation_path = Path(settings.get('presentation_path', 'assets/company_presentation.pdf'))
     if not presentation_path.is_absolute():
-        presentation_path = Path(__file__).parent / presentation_path
+        presentation_path = BASE_DIR / presentation_path
         
     presentation_exists = presentation_path.exists()
     presentation_size = round(os.path.getsize(presentation_path) / 1024, 2) if presentation_exists else 0
+    presentation_filename = presentation_path.name if presentation_exists else ''
     
-    return render_template('send.html', settings=settings, presentation_exists=presentation_exists, presentation_size=presentation_size)
+    return render_template(
+        'send.html', 
+        settings=settings, 
+        presentation_exists=presentation_exists, 
+        presentation_size=presentation_size,
+        presentation_filename=presentation_filename
+    )
+
+@app.route('/upload-image', methods=['POST'])
+def upload_image():
+    if 'image' not in request.files:
+        return jsonify({'success': False, 'error': 'No image file uploaded'}), 400
+    file = request.files['image']
+    if not file or file.filename == '':
+        return jsonify({'success': False, 'error': 'No file selected'}), 400
+
+    allowed_exts = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
+    ext = Path(file.filename).suffix.lower()
+    if ext not in allowed_exts:
+        return jsonify({'success': False, 'error': f'Unsupported image format: {ext}'}), 400
+
+    upload_dir = BASE_DIR / 'assets' / 'images'
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    filename = f"img_{uuid.uuid4().hex[:10]}{ext}"
+    target_path = upload_dir / filename
+    file.save(str(target_path))
+
+    with open(target_path, 'rb') as f:
+        data_b64 = base64.b64encode(f.read()).decode('utf-8')
+    mime = mimetypes.guess_type(str(target_path))[0] or 'image/png'
+    data_uri = f"data:{mime};base64,{data_b64}"
+
+    return jsonify({
+        'success': True,
+        'url': f"/assets/images/{filename}",
+        'data_uri': data_uri,
+        'filename': filename
+    })
+
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(BASE_DIR / 'assets', filename)
 
 @app.route('/report')
 def report():
@@ -177,6 +255,8 @@ def settings():
             'google_cse_cx': request.form.get('google_cse_cx', '').strip(),
             'gemini_api_key': request.form.get('gemini_api_key', '').strip(),
             'search_keyword': request.form.get('search_keyword', 'Singing Bowls').strip(),
+            'search_city': request.form.get('search_city', '').strip(),
+            'search_country': request.form.get('search_country', '').strip(),
             'daily_send_limit': int(request.form.get('daily_send_limit', 100)),
             'send_delay_seconds': float(request.form.get('send_delay_seconds', 2.0)),
             'presentation_path': request.form.get('presentation_path', 'assets/company_presentation.pdf').strip()

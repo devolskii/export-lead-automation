@@ -4,13 +4,39 @@ from datetime import datetime
 from pathlib import Path
 from config import BUYERS_CSV, SENT_LOG_CSV, BUSINESS_EMAILS_CSV, INDIVIDUAL_EMAILS_CSV
 
+BUYERS_FIELDS = ['email', 'buyer_name', 'company_name', 'website', 'city', 'country', 'source_platform', 'discovered_at']
+SEGMENT_FIELDS = ['email', 'buyer_name', 'company_name', 'website', 'city', 'country', 'source_platform']
+
+def ensure_city_column(filepath, target_fields):
+    if not os.path.exists(filepath):
+        return
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            fieldnames = reader.fieldnames or []
+            if 'city' in fieldnames:
+                return
+            rows = list(reader)
+        
+        with open(filepath, 'w', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=target_fields, extrasaction='ignore')
+            writer.writeheader()
+            for row in rows:
+                if 'city' not in row:
+                    row['city'] = ''
+                writer.writerow(row)
+    except Exception as e:
+        print(f"[Activity Logger] Migration notice for {filepath}: {e}")
+
 def init_csv_files():
     Path(BUYERS_CSV).parent.mkdir(parents=True, exist_ok=True)
     
     if not os.path.exists(BUYERS_CSV):
         with open(BUYERS_CSV, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'country', 'source_platform', 'discovered_at'])
+            writer.writerow(BUYERS_FIELDS)
+    else:
+        ensure_city_column(BUYERS_CSV, BUYERS_FIELDS)
             
     if not os.path.exists(SENT_LOG_CSV):
         with open(SENT_LOG_CSV, 'w', newline='', encoding='utf-8') as f:
@@ -20,12 +46,16 @@ def init_csv_files():
     if not os.path.exists(BUSINESS_EMAILS_CSV):
         with open(BUSINESS_EMAILS_CSV, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'country', 'source_platform'])
+            writer.writerow(SEGMENT_FIELDS)
+    else:
+        ensure_city_column(BUSINESS_EMAILS_CSV, SEGMENT_FIELDS)
 
     if not os.path.exists(INDIVIDUAL_EMAILS_CSV):
         with open(INDIVIDUAL_EMAILS_CSV, 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
-            writer.writerow(['email', 'buyer_name', 'company_name', 'website', 'country', 'source_platform'])
+            writer.writerow(SEGMENT_FIELDS)
+    else:
+        ensure_city_column(INDIVIDUAL_EMAILS_CSV, SEGMENT_FIELDS)
 
 def get_existing_emails():
     init_csv_files()
@@ -63,7 +93,8 @@ def log_buyers(buyer_records):
                     r.get('buyer_name', 'Valued Customer'),
                     r.get('company_name', ''),
                     r.get('website', ''),
-                    r.get('country', ''),
+                    r.get('city', ''),
+                    r.get('country', 'International'),
                     r.get('source_platform', 'Unknown'),
                     datetime.now().isoformat()
                 ])

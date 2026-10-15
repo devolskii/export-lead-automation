@@ -7,13 +7,16 @@ HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 }
 
-def search_wikipedia_directory(keyword: str) -> list[dict]:
+def search_wikipedia_directory(keyword: str, city: str = '', country: str = '') -> list[dict]:
     records = []
     url = "https://en.wikipedia.org/w/api.php"
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_str = " ".join(loc_parts)
+    srsearch = f"{keyword} {loc_str} wholesale distributor company importer".strip()
     params = {
         'action': 'query',
         'list': 'search',
-        'srsearch': f"{keyword} wholesale distributor company importer",
+        'srsearch': srsearch,
         'format': 'json'
     }
     try:
@@ -27,6 +30,8 @@ def search_wikipedia_directory(keyword: str) -> list[dict]:
                 extracted = normalize_buyer_record({
                     'content': f"{title} {snippet}",
                     'website': f"https://en.wikipedia.org/wiki/{quote_plus(title)}",
+                    'city': city,
+                    'country': country,
                     'source_platform': 'Wikipedia Directory API'
                 })
                 records.extend(extracted)
@@ -34,11 +39,14 @@ def search_wikipedia_directory(keyword: str) -> list[dict]:
         print(f"[Wikipedia Directory API] Error: {e}")
     return records
 
-def search_directory(keyword: str) -> list[dict]:
-    records = search_wikipedia_directory(keyword)
+def search_directory(keyword: str, city: str = '', country: str = '') -> list[dict]:
+    records = search_wikipedia_directory(keyword, city=city, country=country)
     
     # Direct search fallback
-    query = f"\"directory\" OR \"importers\" OR \"wholesale\" \"{keyword}\" contact email"
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_terms = " ".join(f'"{p}"' for p in loc_parts)
+    loc_clause = f' {loc_terms}' if loc_terms else ''
+    query = f"\"directory\" OR \"importers\" OR \"wholesale\" \"{keyword}\"{loc_clause} contact email"
     url = f"https://www.bing.com/search?q={quote_plus(query)}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -51,6 +59,8 @@ def search_directory(keyword: str) -> list[dict]:
                 extracted = normalize_buyer_record({
                     'content': snippet,
                     'website': link,
+                    'city': city,
+                    'country': country,
                     'source_platform': 'Business Directory'
                 })
                 records.extend(extracted)

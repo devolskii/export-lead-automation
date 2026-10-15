@@ -5,9 +5,12 @@ from extraction.data_extractor import normalize_buyer_record
 
 HEADERS = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64)'}
 
-def search_facebook(keyword: str) -> list[dict]:
+def search_facebook(keyword: str, city: str = '', country: str = '') -> list[dict]:
     records = []
-    query = f"site:facebook.com \"{keyword}\" \"email\" OR \"contact\" importer buyer"
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_terms = " ".join(f'"{p}"' for p in loc_parts)
+    loc_clause = f' {loc_terms}' if loc_terms else ''
+    query = f"site:facebook.com \"{keyword}\"{loc_clause} \"email\" OR \"contact\" importer buyer"
     url = f"https://html.duckduckgo.com/html/?q={quote_plus(query)}"
     try:
         resp = requests.get(url, headers=HEADERS, timeout=10)
@@ -16,6 +19,8 @@ def search_facebook(keyword: str) -> list[dict]:
             for r in soup.find_all('div', class_='result'):
                 extracted = normalize_buyer_record({
                     'content': r.get_text(),
+                    'city': city,
+                    'country': country,
                     'source_platform': 'Facebook'
                 })
                 records.extend(extracted)

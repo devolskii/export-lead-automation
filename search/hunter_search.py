@@ -2,14 +2,16 @@ import requests
 from extraction.data_extractor import normalize_buyer_record
 from config import load_settings
 
-def search_hunter_io(keyword: str) -> list[dict]:
+def search_hunter_io(keyword: str, city: str = '', country: str = '') -> list[dict]:
     settings = load_settings()
     api_key = settings.get('hunter_api_key', '').strip()
     if not api_key:
         print("[Hunter.io API] No Hunter API key configured.")
         return []
         
-    print(f"[Hunter.io API] Discovering leads for keyword/domain: '{keyword}'...")
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_str = f" in {', '.join(loc_parts)}" if loc_parts else ""
+    print(f"[Hunter.io API] Discovering leads for keyword/domain: '{keyword}'{loc_str}...")
     records = []
     
     # 1. Discover domains matching the keyword if keyword looks like a domain or search term
@@ -42,6 +44,8 @@ def search_hunter_io(keyword: str) -> list[dict]:
                     'company_name': org,
                     'website': f"https://{domain}",
                     'content': f"Position: {position}",
+                    'city': city,
+                    'country': country,
                     'source_platform': 'Hunter.io API'
                 })
                 records.extend(extracted)

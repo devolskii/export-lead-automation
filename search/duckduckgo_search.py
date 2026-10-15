@@ -53,19 +53,25 @@ def search_duckduckgo_html(query: str, max_items: int = 15) -> list[dict]:
         print(f"[DuckDuckGo HTML Fallback] Error: {e}")
     return items
 
-def search_duckduckgo(keyword: str, max_results: int = 10) -> list[dict]:
+def search_duckduckgo(keyword: str, max_results: int = 10, city: str = '', country: str = '') -> list[dict]:
     """
     Search DuckDuckGo for potential buyers/importers and extract verified contact emails.
     Uses DDGS client with automatic fallback to DuckDuckGo HTML endpoint and deep-page extraction.
     """
     records = []
     seen_emails = set()
+    loc_parts = [p.strip() for p in [city, country] if p.strip()]
+    loc_terms = " ".join(f'"{p}"' for p in loc_parts)
+    loc_clause = f' {loc_terms}' if loc_terms else ''
+    loc_str = ", ".join(loc_parts)
+
     queries = [
-        f'"{keyword}" "contact" "email" buyer OR importer',
-        f'"{keyword}" wholesale distributor contact email'
+        f'"{keyword}"{loc_clause} "contact" "email" buyer OR importer',
+        f'"{keyword}"{loc_clause} wholesale distributor contact email'
     ]
 
-    print(f"[DuckDuckGo API] Discovering buyer leads for: '{keyword}'...")
+    location_log = f" in {loc_str}" if loc_str else ""
+    print(f"[DuckDuckGo API] Discovering buyer leads for: '{keyword}'{location_log}...")
 
     for query in queries:
         raw_items = []
@@ -92,6 +98,8 @@ def search_duckduckgo(keyword: str, max_results: int = 10) -> list[dict]:
                 'content': f"{title} {body}",
                 'website': href,
                 'title': title,
+                'city': city,
+                'country': country,
                 'source_platform': 'DuckDuckGo API'
             })
 
@@ -110,7 +118,9 @@ def search_duckduckgo(keyword: str, max_results: int = 10) -> list[dict]:
                         'content': page_content,
                         'website': href,
                         'title': title,
-                        'source_platform': 'DuckDuckGo API'
+                        'city': city,
+                        'country': country,
+                        'source_platform': 'DuckDuckGo API (Deep Crawl)'
                     })
 
             for rec in extracted:
